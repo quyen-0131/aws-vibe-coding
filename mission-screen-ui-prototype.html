@@ -1,0 +1,994 @@
+<!doctype html>
+<!--
+  THROWAWAY UI PROTOTYPE — Language Study Planner
+  ==============================================
+  Question: What should a Mission screen look like to a Busy Learner?
+
+  Plan: three structurally different variants of the same Mission screen,
+  switchable via ?variant=A|B|C (falls back to #variant=A on file://),
+  on a throwaway page. No existing app page to host them, so sub-shape B.
+
+  Assumption stated up front: the state model is NOT under test here. It is
+  taken as settled by mission-flow-prototype.html (supported attempt →
+  variation → pause → delayed Review Mission → Capability). This prototype
+  only asks how that sequence should be presented.
+
+  Nothing is saved. The microphone is real (MediaRecorder), but a secure context
+  is required: serve over http://localhost, because file:// blocks it.
+
+  KNOWN AND DELIBERATE: there is no API and no conversation engine. The three
+  exchanges are hardcoded strings. Nothing the learner types is read or answered
+  — the script advances regardless. This prototype asks what the screen should
+  look like, not whether a dialogue can work. See PRD.md §13.3.
+  The dark bar at the bottom is prototype scaffolding, not part of any design
+  being evaluated. In a real project it would be gated behind
+  process.env.NODE_ENV !== 'production'; there is no build step here.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission screen UI prototype — Language Study Planner</title>
+<style>
+  :root{
+    --ink:#18221f; --muted:#5c6963; --paper:#f7f6f1; --card:#fffefa;
+    --line:#d9dfd9; --accent:#236b50; --accent-soft:#e4f1eb;
+    --warn:#8c4a11; --warn-soft:#fff0df; --lock:#8a8f88;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding-bottom:120px;
+  }
+  .fr{font-style:normal}
+  button{font:inherit;cursor:pointer}
+  .ribbon{
+    background:repeating-linear-gradient(45deg,#2b2b2b,#2b2b2b 14px,#3a3a3a 14px,#3a3a3a 28px);
+    color:#fff;font-size:.74rem;font-weight:800;letter-spacing:.14em;
+    text-transform:uppercase;text-align:center;padding:7px 12px;
+  }
+
+  /* ============================ VARIANT A — Conversation thread ============ */
+  .vA{max-width:640px;margin:0 auto;padding:26px 18px 40px}
+  .vA .mission-strip{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    padding-bottom:14px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+  .vA .mission-strip h1{margin:0;font-size:1.05rem;letter-spacing:-.01em}
+  .vA .mission-strip span{color:var(--muted);font-size:.85rem}
+  .vA .thread{display:flex;flex-direction:column;gap:14px}
+  .vA .turn{max-width:82%}
+  .vA .turn.them{align-self:flex-start}
+  .vA .turn.you{align-self:flex-end}
+  .vA .who{font-size:.72rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .vA .turn.you .who{text-align:right}
+  .vA .bubble{padding:12px 15px;border-radius:16px;background:#fff;border:1px solid var(--line)}
+  .vA .turn.them .bubble{border-bottom-left-radius:5px}
+  .vA .turn.you .bubble{border-bottom-right-radius:5px;background:var(--accent-soft);
+    border-color:#c3ded1}
+  /* The model sentence sits on YOUR side, dashed, so it can never be mistaken
+     for something the server said. This was the role-confusion bug. */
+  .vA .bubble.hint{background:#fff;border-style:dashed;border-color:#b9c9bf}
+  .vA .scene{margin-bottom:22px;padding:16px 18px;border-radius:14px;
+    background:#eef1ec;border:1px solid var(--line)}
+  .vA .scene-where{font-weight:750;margin-bottom:9px}
+  .vA .scene p{margin:3px 0;font-size:.92rem;color:var(--muted)}
+  .vA .scene b{color:var(--ink);font-weight:700}
+  .vA .scene .scene-done{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+    color:var(--accent)}
+  .vA .scene .scene-done b{color:var(--accent)}
+  .vA .bubble .en{display:block;margin-top:6px;color:var(--muted);font-size:.87rem}
+  .vA .wc{border:0;background:none;padding:0;color:var(--accent);font-weight:650;
+    text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+  .vA .inline-card{margin-top:9px;padding:12px 14px;border-radius:12px;
+    background:var(--card);border:1px dashed #b9c9bf}
+  .vA .inline-card b{display:block;font-size:1.02rem}
+  .vA .inline-card .ipa{color:var(--muted);font-size:.85rem}
+  .vA .inline-card p{margin:7px 0 0;font-size:.9rem}
+  .vA .inline-card .ex{margin-top:6px;font-size:.9rem;color:var(--accent)}
+  .vA .cue{align-self:center;text-align:center;color:var(--muted);font-size:.85rem;
+    padding:6px 0}
+  .vA .composer{position:sticky;bottom:96px;margin-top:20px;padding:14px;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 6px 22px rgba(25,39,32,.09)}
+  .vA .composer .prompt{margin:0 0 10px;font-size:.9rem;color:var(--muted)}
+  .vA .composer textarea{width:100%;min-height:64px;resize:vertical;padding:11px 12px;
+    border:1px solid var(--line);border-radius:11px;font:inherit;background:#fff}
+  .vA .composer-row{display:flex;gap:9px;margin-top:10px;align-items:center}
+  .vA .mic{flex:0 0 auto;border:1px solid #b9c9bf;background:#fff;border-radius:11px;
+    padding:10px 13px;font-weight:650}
+  .vA .mic.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .vA .send{flex:1;border:1px solid var(--accent);background:var(--accent);color:#fff;
+    border-radius:11px;padding:11px 14px;font-weight:700}
+  .vA .send[disabled]{opacity:.45;cursor:not-allowed}
+  .vA .paused{align-self:stretch;margin-top:18px;padding:16px 17px;border-radius:14px;
+    background:var(--warn-soft);border:1px solid #e8cfa8;color:var(--warn)}
+  .vA .paused b{display:block;margin-bottom:5px}
+  .vA .earned{align-self:stretch;margin-top:18px;padding:18px;border-radius:14px;
+    background:var(--accent);color:#fff}
+  .vA .earned b{display:block;font-size:1.1rem;margin-bottom:5px}
+
+  /* ============================ VARIANT B — Split workbench =============== */
+  .vB{display:grid;grid-template-columns:290px minmax(0,1fr) 250px;gap:0;
+    min-height:calc(100vh - 150px);align-items:stretch}
+  .vB > *{padding:22px 20px}
+  .vB .rail{background:#f1f0ea;border-right:1px solid var(--line)}
+  .vB .ref{background:#f1f0ea;border-left:1px solid var(--line)}
+  .vB h3{margin:0 0 10px;font-size:.74rem;font-weight:800;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .vB .brief{margin:0 0 22px;font-size:.92rem}
+  .vB .brief strong{display:block;font-size:1.02rem;margin-bottom:4px}
+  .vB .ramp{list-style:none;margin:0 0 22px;padding:0}
+  .vB .ramp li{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);
+    font-size:.9rem;align-items:flex-start}
+  .vB .ramp .n{flex:0 0 20px;width:20px;height:20px;border-radius:50%;font-size:.72rem;
+    font-weight:800;text-align:center;line-height:20px;background:#dfe4de;color:var(--muted)}
+  .vB .ramp li.done .n{background:var(--accent);color:#fff}
+  .vB .ramp li.now .n{background:var(--warn);color:#fff}
+  .vB .ramp li.now{font-weight:700}
+  .vB .ramp li.locked{color:var(--lock)}
+  .vB .meter{height:7px;border-radius:99px;background:#dfe4de;overflow:hidden;margin:6px 0 6px}
+  .vB .meter i{display:block;height:100%;background:var(--accent);transition:width .3s}
+  .vB .cap{font-size:.85rem;color:var(--muted)}
+  .vB .cap.earned{color:var(--accent);font-weight:700}
+  .vB .ev{list-style:none;margin:0;padding:0;font-size:.85rem}
+  .vB .ev li{padding:8px 0;border-top:1px solid var(--line);color:var(--muted)}
+  .vB .ev li b{display:block;color:var(--ink);font-size:.8rem;text-transform:uppercase;
+    letter-spacing:.06em;margin-bottom:3px}
+  .vB .work h2{margin:0 0 4px;font-size:1.35rem;letter-spacing:-.02em}
+  .vB .work .stepname{color:var(--warn);font-size:.76rem;font-weight:800;
+    letter-spacing:.1em;text-transform:uppercase}
+  .vB .field{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+  .vB .field label{display:block;font-size:.74rem;font-weight:800;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .vB .field p{margin:0;font-size:.98rem}
+  .vB details{margin-top:9px}
+  .vB summary{cursor:pointer;color:var(--accent);font-size:.88rem;font-weight:650}
+  .vB .model{margin-top:9px;padding:12px 14px;background:var(--accent-soft);
+    border-radius:10px;font-size:1.02rem}
+  .vB textarea{width:100%;min-height:96px;resize:vertical;padding:12px;
+    border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+  .vB .speak{display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px 14px;
+    border:1px solid var(--line);border-radius:10px;background:#fff}
+  .vB .speak button{border:1px solid #b9c9bf;background:#fff;border-radius:9px;
+    padding:8px 12px;font-weight:650}
+  .vB .speak button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .vB .speak span{font-size:.87rem;color:var(--muted)}
+  .vB .submit{margin-top:18px;border:1px solid var(--accent);background:var(--accent);
+    color:#fff;border-radius:10px;padding:13px 22px;font-weight:750}
+  .vB .submit[disabled]{opacity:.45;cursor:not-allowed}
+  .vB .lockbox{margin-top:20px;padding:18px;border-radius:12px;background:var(--warn-soft);
+    border:1px solid #e8cfa8;color:var(--warn)}
+  .vB .lockbox b{display:block;margin-bottom:5px}
+  .vB .wcard{padding:12px 0;border-top:1px solid var(--line)}
+  .vB .wcard b{display:block}
+  .vB .wcard .ipa{color:var(--muted);font-size:.82rem}
+  .vB .wcard .mean{font-size:.88rem;margin-top:4px}
+  .vB .wcard .ex{font-size:.85rem;color:var(--accent);margin-top:4px}
+  .vB .wcard.new::after{content:"new";float:right;font-size:.66rem;font-weight:800;
+    letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent);
+    padding:2px 7px;border-radius:99px;margin-top:-20px}
+  @media (max-width:1000px){.vB{grid-template-columns:1fr}
+    .vB .rail,.vB .ref{border:0;border-bottom:1px solid var(--line)}}
+
+  /* ============================ VARIANT C — Card stack ==================== */
+  .vC{max-width:430px;margin:0 auto;padding:20px 18px 40px;
+    min-height:calc(100vh - 150px);display:flex;flex-direction:column}
+  .vC .dots{display:flex;gap:5px;justify-content:center;margin-bottom:22px}
+  .vC .dots i{width:26px;height:4px;border-radius:99px;background:#dfe4de}
+  .vC .dots i.on{background:var(--accent)}
+  .vC .dots i.at{background:var(--warn)}
+  .vC .chip{align-self:center;margin-bottom:20px;border:1px solid var(--line);
+    background:#fff;border-radius:99px;padding:5px 13px;font-size:.78rem;color:var(--muted)}
+  .vC .stack{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .vC .big{background:var(--card);border:1px solid var(--line);border-radius:22px;
+    padding:30px 26px;box-shadow:0 10px 34px rgba(25,39,32,.07);text-align:center}
+  .vC .kind{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:16px}
+  .vC .kind.warn{color:var(--warn)}
+  .vC .lead{font-size:1.5rem;line-height:1.25;letter-spacing:-.02em;margin:0}
+  .vC .scene{margin:0 0 20px;padding:14px 15px;border-radius:14px;background:#eef1ec;
+    text-align:left;font-size:.87rem;color:var(--muted)}
+  .vC .scene b{color:var(--ink);display:block;margin-bottom:6px;font-size:.95rem}
+  .vC .scene p{margin:2px 0}
+  .vC .scene .done{margin-top:8px;padding-top:8px;border-top:1px solid #dfe4de;color:var(--accent)}
+  .vC .sub{margin:14px 0 0;color:var(--muted);font-size:.95rem}
+  .vC .phrase{margin:20px 0 0;padding:18px;border-radius:14px;background:var(--accent-soft);
+    font-size:1.28rem;line-height:1.35}
+  .vC .ipa{margin-top:8px;color:var(--muted);font-size:.88rem}
+  .vC textarea{width:100%;min-height:88px;margin-top:20px;padding:13px;text-align:left;
+    border:1px solid var(--line);border-radius:13px;font:inherit;background:#fff;resize:vertical}
+  .vC .mic{margin-top:12px;width:100%;border:1px solid #b9c9bf;background:#fff;
+    border-radius:13px;padding:13px;font-weight:650}
+  .vC .mic.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .vC .next{margin-top:22px;width:100%;border:1px solid var(--accent);background:var(--accent);
+    color:#fff;border-radius:14px;padding:16px;font-size:1.02rem;font-weight:750}
+  .vC .next[disabled]{opacity:.45;cursor:not-allowed}
+  .vC .ghost{margin-top:10px;width:100%;border:0;background:none;color:var(--muted);
+    padding:8px;font-size:.88rem;text-decoration:underline}
+  .vC .peek{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;
+    background:#fff;font-size:.86rem;text-align:left}
+  .vC .peek li{margin:4px 0;color:var(--muted)}
+  .vC .peek b{display:block;margin-bottom:6px;font-size:.72rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+
+  .recap{margin-top:18px;padding:16px;border-radius:13px;background:rgba(255,255,255,.14);
+    text-align:left}
+  .vB .recap,.vC .recap{background:#eef1ec}
+  .recap b{display:block;margin-bottom:9px;font-size:.74rem;font-weight:800;
+    letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+  .recap i{display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:99px;
+    background:rgba(255,255,255,.22);font-style:normal;font-size:.9rem;font-weight:650}
+  .vB .recap i,.vC .recap i{background:var(--accent-soft);color:var(--accent)}
+  .recap p{margin:9px 0 0;font-size:.9rem;opacity:.9}
+  .recap .why{margin:6px 0 9px;font-size:.88rem;opacity:.85}
+  .recap .cando{margin:0 0 4px;padding-left:20px;font-size:.98rem;font-weight:650}
+  .recap .cando li{margin:4px 0}
+  .vB .carried,.vA .carried{margin-top:4px;font-size:.76rem;font-weight:700;color:var(--warn)}
+  .recap button{margin-top:13px;width:100%;padding:12px;border-radius:11px;border:0;
+    background:#fff;color:var(--accent);font-weight:750}
+  .heard{margin-top:10px;padding:11px 13px;border-radius:11px;background:#eef1ec;
+    border:1px dashed #b9c9bf;font-size:.95rem;text-align:left;min-height:20px}
+  .heard .int{color:var(--muted);font-style:italic}
+  .heard::before{content:"What we heard — edit it above if it's wrong";display:block;
+    margin-bottom:5px;font-size:.7rem;font-weight:800;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--muted)}
+
+  /* ==================== Entry screens (shared by all variants) ============ */
+  .entry{max-width:620px;margin:0 auto;padding:40px 20px}
+  .entry h1{margin:0 0 10px;font-size:1.75rem;letter-spacing:-.03em}
+  .entry .promise{margin:0 0 30px;color:var(--muted);font-size:1.02rem}
+  .entry h2{margin:0 0 14px;font-size:1.05rem}
+  .opts{display:grid;gap:14px}
+  .opt{display:block;width:100%;text-align:left;padding:20px;border-radius:16px;
+    border:1px solid var(--line);background:var(--card);font:inherit}
+  .opt:hover{border-color:var(--accent)}
+  .opt b{display:block;font-size:1.08rem;margin-bottom:5px}
+  .opt span{color:var(--muted);font-size:.92rem}
+  .opt.primary{border-color:var(--accent);background:var(--accent-soft)}
+  .opt .tag{display:inline-block;margin-bottom:9px;padding:2px 9px;border-radius:99px;
+    background:var(--accent);color:#fff;font-size:.68rem;font-weight:800;
+    letter-spacing:.09em;text-transform:uppercase}
+  .entry textarea{width:100%;min-height:150px;padding:13px;border:1px solid var(--line);
+    border-radius:12px;font:inherit;background:#fff;resize:vertical}
+  .entry input{width:100%;margin-bottom:12px;padding:12px 13px;border:1px solid var(--line);
+    border-radius:12px;font:inherit;background:#fff}
+  .entry .go{margin-top:14px;padding:13px 20px;border:1px solid var(--accent);
+    background:var(--accent);color:#fff;border-radius:12px;font-weight:750}
+  .entry .go[disabled]{opacity:.45;cursor:not-allowed}
+  .entry .back{margin-top:12px;border:0;background:none;color:var(--muted);
+    text-decoration:underline;padding:6px 0}
+  .found{margin-top:20px;padding:18px;border-radius:14px;background:#fff;
+    border:1px solid var(--line)}
+  .found h3{margin:0 0 4px;font-size:.98rem}
+  .found .sub{margin:0 0 12px;color:var(--muted);font-size:.88rem}
+  .found .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .found .chips i{font-style:normal;padding:5px 11px;border-radius:99px;
+    background:var(--accent-soft);color:var(--accent);font-size:.9rem;font-weight:650}
+  .gap{margin-top:16px;padding:15px 16px;border-radius:12px;background:var(--warn-soft);
+    border:1px solid #e8cfa8;color:var(--warn);font-size:.92rem}
+  .gap b{display:block;margin-bottom:5px}
+  .gap ul{margin:8px 0 0;padding-left:20px}
+
+  /* ============================ Prototype scaffolding ==================== */
+  #proto{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99;
+    display:flex;align-items:center;gap:4px;background:#14181a;color:#fff;
+    border-radius:99px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+    font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;max-width:96vw;flex-wrap:wrap}
+  #proto button{border:0;background:#262c2f;color:#fff;border-radius:99px;
+    padding:8px 12px;font:inherit}
+  #proto button:hover{background:#394246}
+  #proto .label{padding:0 12px;font-weight:700;white-space:nowrap}
+  #proto .sep{width:1px;height:22px;background:#394246;margin:0 4px}
+  #readout{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:99;
+    width:min(600px,94vw);max-height:46vh;overflow:auto;background:#14181a;color:#d8e2dc;
+    border-radius:14px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+    font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+  #readout[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="ribbon">Throwaway prototype · nothing is saved · serve over http://localhost to use the mic</div>
+<div id="root"></div>
+
+<div id="readout" hidden></div>
+<div id="proto">
+  <button id="prev" title="Previous variant (←)">‹</button>
+  <span class="label" id="vlabel"></span>
+  <button id="next" title="Next variant (→)">›</button>
+  <span class="sep"></span>
+  <button id="state">state</button>
+  <button id="reset">reset</button>
+</div>
+
+<script>
+/* ---------------------------------------------------------------- content */
+const WORDS = {
+  voudrais: {fr:"je voudrais", ipa:"/ʒə vu.dʁɛ/", en:"I would like",
+    note:"Softer than « je veux » (I want). Safe for any order or request.",
+    ex:"Je voudrais un thé, s'il vous plaît."},
+  svp: {fr:"s'il vous plaît", ipa:"/sil vu plɛ/", en:"please (formal)",
+    note:"The formal « vous » form. Use it with anyone serving you.",
+    ex:"Un café, s'il vous plaît."},
+  conseil: {fr:"qu'est-ce que vous me conseillez ?", ipa:"/kɛs kə vu mə kɔ̃.sɛ.je/",
+    en:"what do you recommend?",
+    note:"A reusable pattern for handing the decision back when you are stuck.",
+    ex:"Je ne sais pas… qu'est-ce que vous me conseillez ?"},
+  autre: {fr:"autre chose", ipa:"/otʁ ʃoz/", en:"something else",
+    note:"Pairs with « je voudrais » when your first choice is unavailable.",
+    ex:"Alors je voudrais autre chose."},
+  billet: {fr:"un billet pour…", ipa:"/œ̃ bi.jɛ puʁ/", en:"a ticket to…",
+    note:"Same shape as ordering food: « je voudrais » + the thing + destination.",
+    ex:"Je voudrais un billet pour Marseille."},
+  place: {fr:"il n'y a plus de place", ipa:"/il nja ply də plas/", en:"there are no seats left",
+    note:"The same « il n'y a plus de… » you met with the croissants.",
+    ex:"Il n'y a plus de place sur ce train."},
+  correspondance: {fr:"une correspondance", ipa:"/yn kɔ.ʁɛs.pɔ̃.dɑ̃s/", en:"a connection (changing trains)",
+    note:"Ask « j'ai le temps ? » after it if the change looks tight.",
+    ex:"Il y a une correspondance à Lyon."}
+};
+
+const MISSIONS = [
+{
+  title:"Ordering in a café",
+  capability:"Can order in a café and handle a change to the order",
+  steps:[
+  { name:"Supported attempt",
+    scene:{ where:"A busy café counter in Lyon, mid-morning.",
+            you:"You — a visitor who wants breakfast and would rather not point at things.",
+            them:"The server. Friendly, in a hurry, will not slow down for you.",
+            want:"A coffee and a croissant.",
+            done:"You've ordered, and they've understood you." },
+    barista:"Bonjour ! Qu'est-ce que je vous sers ?",
+    baristaEn:"Hello! What can I get you?",
+    task:"Order a coffee and a croissant.",
+    model:"Bonjour, je voudrais un café et un croissant, s'il vous plaît.",
+    modelEn:"Hello, I would like a coffee and a croissant, please.",
+    words:["voudrais","svp"],
+    evidence:"Supported — ordered a coffee and a croissant with the model sentence shown" },
+  { name:"Variation",
+    scene:{ where:"Same counter, thirty seconds later.",
+            you:"Still you. Your first choice has just fallen through.",
+            them:"The same server. Apologetic, but the queue behind you is growing.",
+            want:"Something else to eat — and you don't know the menu.",
+            done:"You've asked them to decide for you." },
+    barista:"Ah, désolé — il n'y a plus de croissants aujourd'hui.",
+    baristaEn:"Ah, sorry — there are no croissants left today.",
+    task:"The croissants are gone. Ask what they recommend. No model sentence this time.",
+    model:null,
+    words:["conseil","autre"],
+    evidence:"Variation — handled a sold-out item and asked for a recommendation, unsupported" },
+  { name:"On your own",
+    scene:{ where:"Same counter. The queue behind you has not moved.",
+            you:"You, mid-order, about to change your mind.",
+            them:"The server, pad ready, waiting on you.",
+            want:"The pastry they suggested — but a different drink than you asked for.",
+            done:"You've taken the suggestion and changed your drink, and they followed you." },
+    barista:"Il me reste des pains au chocolat — ils sortent du four.",
+    baristaEn:"I've got pains au chocolat left — straight out of the oven.",
+    task:"Take the suggestion, then change your drink. No help this time.",
+    model:null,
+    words:["voudrais","autre"],
+    evidence:"Unsupported — accepted a recommendation and changed the order with no help" }
+]},
+{
+  title:"A ticket machine that won't work",
+  capability:"Can buy a train ticket from a person when the machine fails",
+  steps:[
+  { name:"Supported attempt",
+    scene:{ where:"Gare de Lyon, Saturday morning. The ticket machine has eaten your card.",
+            you:"You — with a train to catch and no ticket.",
+            them:"The clerk behind the counter. Brisk, seen this a hundred times.",
+            want:"A ticket to Marseille.",
+            done:"You've said where you're going and asked for a ticket." },
+    barista:"Bonjour. La machine est en panne ? Où allez-vous ?",
+    baristaEn:"Hello. Machine broken? Where are you headed?",
+    task:"Say where you're going and ask for a ticket.",
+    model:"Bonjour, je voudrais un billet pour Marseille, s'il vous plaît.",
+    modelEn:"Hello, I would like a ticket to Marseille, please.",
+    words:["voudrais","billet"],
+    evidence:"Supported — asked for a ticket to Marseille with the model sentence shown" },
+  { name:"Variation",
+    scene:{ where:"Same counter. Someone behind you sighs.",
+            you:"You, whose train has just filled up.",
+            them:"The clerk, already checking other options.",
+            want:"Any workable way to get to Marseille today.",
+            done:"You've asked them to pick the best option for you." },
+    barista:"Il n'y a plus de place sur le train de 14h. Le prochain direct est à 16h30.",
+    baristaEn:"No seats left on the 2pm. The next direct is 4:30pm.",
+    task:"Your train is full. Ask what they suggest — you have used this pattern before.",
+    model:null,
+    words:["conseil","place"],
+    evidence:"Variation — reused the recommendation pattern in a new situation, unsupported" },
+  { name:"On your own",
+    scene:{ where:"Still at the counter. The clerk has found something.",
+            you:"You, being offered a compromise you don't fully understand.",
+            them:"The clerk, one hand on the printer.",
+            want:"To accept — but only if the connection is actually possible.",
+            done:"You've accepted and checked you'll have time to change trains." },
+    barista:"Je peux vous mettre sur le 15h, avec une correspondance à Lyon.",
+    baristaEn:"I can put you on the 3pm, changing at Lyon.",
+    task:"Take it, but ask whether you'll have enough time to change. Nothing shown.",
+    model:null,
+    words:["correspondance","conseil"],
+    evidence:"Unsupported — accepted a rerouting and queried the connection with no help" }
+]}
+];
+
+const VARIANTS = { A:"Conversation thread", B:"Split workbench", C:"Card stack" };
+
+/* ------------------------------------------------------------------ state */
+/* Deliberately in memory only. The sequence itself is not under test here —
+   mission-flow-prototype.html already settled it. */
+const fresh = () => ({ screen:"start", source:null, paste:"", pasteUrl:"",
+                       mission:0, earned:[],
+                       day:1, i:0, evidence:[], capability:null, draft:"",
+                       recording:false, asking:false, audioUrl:null, micError:null, heard:"", interim:"",
+                       openWord:null, peek:false });
+
+/* Real, cheap, no API: pull the most frequent non-trivial words out of pasted
+   text. This is the honest half of "we read your material" — the half that
+   needs no model. Everything else on that screen is a gap, and says so. */
+const STOP = new Set(("le la les un une des du de d a à au aux et ou mais donc or ni car que qui quoi dont où ce cet cette ces se sa son ses leur leurs il elle ils elles on nous vous je tu me te en y est sont était étaient ont avoir être fait pour par avec sans sous sur dans chez plus moins très tout tous toute toutes ne pas non oui si comme quand alors aussi encore déjà cela ça the of and to in a is it that for on with as at by from").split(" "));
+function extractWords(text){
+  const counts = new Map();
+  (text.toLowerCase().match(/[a-zà-öø-ÿ'’-]{3,}/g) || []).forEach(w => {
+    w = w.replace(/^['’-]+|['’-]+$/g, "");
+    if (w.length < 3 || STOP.has(w)) return;
+    counts.set(w, (counts.get(w) || 0) + 1);
+  });
+  return [...counts.entries()].sort((a,b) => b[1]-a[1]).slice(0,10).map(e => e[0]);
+}
+
+const sourceLabel = () => S.source
+  ? (S.source.kind === "ours" ? "one of ours · about 6 min"
+                              // Never claim the café session came from their text. It didn't.
+                              : "placeholder session — your material is not used yet (§13.3)")
+  : "about 6 min";
+
+/* The end-of-mission recap. This is where the product is supposed to differ
+   from pasting a scenario into a chatbot: the can-do list accumulates, and
+   words visibly travel from one mission into the next. */
+function recapHTML(){
+  const cur = steps().flatMap(st => st.words);
+  const carried = [...new Set(cur)].filter(k => originOf(k));
+  const fresh_ = [...new Set(cur)].filter(k => !originOf(k));
+  return `<div class="recap">
+    <b>What you can do now</b>
+    <ol class="cando">${S.earned.map(c => `<li>${esc(c)}</li>`).join("")}</ol>
+    ${carried.length ? `<b style="margin-top:14px">Words that came back</b>
+      <p class="why">You met these in <em>${esc(originOf(carried[0]))}</em>. Nobody re-taught them —
+      they turned up here because you needed them.</p>
+      ${carried.map(k => `<i>${esc(WORDS[k].fr)}</i>`).join("")}` : ""}
+    <b style="margin-top:14px">${carried.length ? "New this time" : "These will come back"}</b>
+    ${fresh_.map(k => `<i>${esc(WORDS[k].fr)}</i>`).join("")}
+    ${hasNextMission()
+      ? `<p class="why">Next: <strong>${esc(MISSIONS[S.mission+1].title)}</strong>. About six minutes.</p>
+         <button id="again">Start it →</button>`
+      : `<p class="why">That is both missions this prototype contains. In the real thing
+         there would be another one waiting, built from your own material.</p>`}
+  </div>`;
+}
+
+/* ---------------------------------------------------------- entry screens */
+function renderStart(){
+  return `<div class="entry">
+    <h1>Turn the French you already read and listen to into things you can actually do.</h1>
+    <p class="promise">About ten minutes, three times a week. No account, nothing to set up.</p>
+    <h2>Where should this first one come from?</h2>
+    <div class="opts">
+      <button class="opt primary" data-go="ours">
+        <span class="tag">Fastest</span>
+        <b>Start with one of ours</b>
+        <span>A café in Lyon. Ready now, nothing to paste. You can bring your own after.</span>
+      </button>
+      <button class="opt" data-go="paste">
+        <b>Bring your own</b>
+        <span>Paste an article, a transcript, or a link. We'll build the practice out of the
+        language that's actually in it.</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderPaste(){
+  const words = S.paste.trim().length > 40 ? extractWords(S.paste) : [];
+  return `<div class="entry">
+    <h1>Bring your own</h1>
+    <p class="promise">Something you already read or listened to in French. An article, a
+    podcast transcript, a chapter — anything with real sentences in it.</p>
+    <input id="purl" placeholder="Paste a link…" value="${esc(S.pasteUrl)}">
+    <textarea id="ptext" placeholder="…or paste the text itself.">${esc(S.paste)}</textarea>
+    ${words.length ? `<div class="found">
+      <h3>Words we can already pull out</h3>
+      <p class="sub">Frequency only — no model involved. This part is real.</p>
+      <div class="chips">${words.map(w => `<i>${esc(w)}</i>`).join("")}</div>
+    </div>
+    <div class="gap"><b>And here is the part that does not exist yet.</b>
+      To make a session out of this we still need someone or something to write:
+      <ul><li>a scene — where you are, who you are, what you want</li>
+        <li>a model sentence worth saying</li>
+        <li>a variation that changes the situation</li>
+        <li>a delayed return two days later</li></ul>
+      That is <strong>PRD §13.3</strong>, the open decision: generated at runtime, or
+      hand-authored. Until it is settled this button can only hand you the café one.</div>` : ""}
+    <div><button class="go" id="pgo" ${S.paste.trim().length > 40 || S.pasteUrl.trim() ? "" : "disabled"}>
+      Use this →</button></div>
+    <button class="back" data-go="start">← Back</button>
+  </div>`;
+}
+
+/* Real MediaRecorder. Needs a secure context, so it works on http://localhost
+   and https:// but NOT on file:// — the fallback message says so rather than
+   failing silently, which is what the faked version did. */
+const Rec = (() => {
+  const supported = !!(navigator.mediaDevices && window.MediaRecorder && window.isSecureContext);
+  let stream = null, rec = null, chunks = [];
+  async function start(){
+    stream = await navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+    chunks = []; rec = new MediaRecorder(stream);
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    rec.start();
+  }
+  function stop(){
+    return new Promise(resolve => {
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        resolve(URL.createObjectURL(new Blob(chunks, { type: rec.mimeType })));
+      };
+      rec.stop();
+    });
+  }
+  return { supported, start, stop };
+})();
+
+/* Live transcript. Chrome/Edge only — Firefox and Safari have no SpeechRecognition,
+   and the UI says so rather than pretending. */
+const Speech = (() => {
+  const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  function start(onUpdate){
+    rec = new Ctor();
+    rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = true;
+    rec.onresult = e => {
+      // Rebuild the whole transcript from the full result list every time.
+      // Appending per event is what produces duplicated words.
+      let done = "", live = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) done += t; else live += t;
+      }
+      onUpdate(done.trim(), live.trim());
+    };
+    rec.onerror = () => {};
+    rec.start();
+  }
+  function stop(){ if (rec) { try { rec.stop(); } catch(e){} rec = null; } }
+  return { supported: !!Ctor, start, stop };
+})();
+
+/* One reusable player. Creating a new Audio per click stacked overlapping
+   copies of the recording on top of each other — the "repeated words" bug. */
+let player = null;
+function playBack(url){
+  if (player) { player.pause(); player.currentTime = 0; }
+  player = new Audio(url);
+  player.play().catch(() => {});
+}
+
+function paintHeard(){
+  const el = $("heard");
+  if (!el) return;
+  el.innerHTML = (S.heard || S.interim)
+    ? esc(S.heard) + (S.interim ? ` <span class="int">${esc(S.interim)}</span>` : "")
+    : `<span class="int">${S.recording ? "Listening…" : ""}</span>`;
+}
+
+async function toggleMic(){
+  if (S.recording) {
+    Speech.stop();
+    S.audioUrl = await Rec.stop();
+    S.recording = false;
+    // The transcript becomes the attempt, editable in the textarea.
+    if (S.heard && !S.draft.trim()) S.draft = S.heard;
+    return render();
+  }
+  if (S.audioUrl) { playBack(S.audioUrl); return; }
+  if (!Rec.supported) {
+    S.micError = location.protocol === "file:"
+      ? "The microphone is blocked on file:// — serve this over http://localhost to record."
+      : "This browser has no MediaRecorder support.";
+    return render();
+  }
+  // Never fail silently: show "asking…" immediately, and give up loudly after
+  // 10s if the permission prompt never resolves (some embedded browsers).
+  S.asking = true; S.micError = null; render();
+  try {
+    await Promise.race([
+      Rec.start(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 10000))
+    ]);
+    S.recording = true;
+    S.heard = ""; S.interim = "";
+    if (Speech.supported) {
+      Speech.start((done, live) => { S.heard = done; S.interim = live; paintHeard(); });
+    }
+  } catch (e) {
+    S.micError = e.message === "Timeout"
+      ? "No answer from the microphone — this browser may be blocking it. Try Chrome or Edge directly."
+      : "Microphone unavailable (" + e.name + ") — check the browser's permission prompt.";
+  }
+  S.asking = false;
+  render();
+}
+
+const micLabel = () => S.asking ? "… asking for the mic"
+  : S.recording ? "◼ Stop recording"
+  : S.audioUrl ? "▶ Replay what you said"
+  : "🎙 Say it out loud";
+let S = fresh();
+let variant = "A";
+
+const mission = () => MISSIONS[S.mission];
+const steps = () => mission().steps;
+const stepNow = () => steps()[S.i];
+/* The point of the whole product: a word met in one mission comes back in a
+   later one, inside a situation the learner has not seen before. */
+const originOf = (key) => {
+  for (let i = 0; i < S.mission; i++)
+    if (MISSIONS[i].steps.some(st => st.words.includes(key))) return MISSIONS[i].title;
+  return null;
+};
+const hasNextMission = () => S.mission < MISSIONS.length - 1;
+function nextMission(){
+  const keep = { source:S.source, earned:S.earned, mission:S.mission + 1 };
+  S = Object.assign(fresh(), keep, { screen:"mission" });
+}
+
+const finished = () => S.i >= steps().length;
+
+function submit(){
+  if (finished()) return;
+  const step = stepNow();
+  S.evidence.push({ name:step.name, day:S.day, said:S.draft.trim() || "(spoken only)",
+                    note:step.evidence });
+  S.i += 1;
+  S.draft = ""; S.audioUrl = null; S.recording = false; S.asking = false; S.micError = null; S.heard = ""; S.interim = ""; S.openWord = null;
+  if (S.i >= steps().length) {
+    S.capability = mission().capability;
+    if (!S.earned.includes(S.capability)) S.earned.push(S.capability);
+  }
+  render();
+}
+
+/* ------------------------------------------------------- shared fragments */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const canSubmit = () => S.draft.trim().length > 0 || !!S.audioUrl;
+
+/* ============================== VARIANT A ================================ */
+/* A conversation you are inside. Progress is the thread getting longer; the
+   Word Cards live inline, attached to the sentence that needed them. */
+function renderA(){
+  const done = steps().slice(0, S.i);
+  let thread = "";
+
+  done.forEach((step, n) => {
+    thread += `
+      <div class="turn them">
+        <div class="who">Le serveur</div>
+        <div class="bubble"><span class="fr">${esc(step.barista)}</span>
+          <span class="en">${esc(step.baristaEn)}</span></div>
+      </div>
+      <div class="turn you">
+        <div class="who">You</div>
+        <div class="bubble">${esc(S.evidence[n].said)}</div>
+      </div>`;
+
+  });
+
+  if (!finished()) {
+    const step = stepNow();
+    const words = step.words.map(k => {
+      const w = WORDS[k];
+      const open = S.openWord === k;
+      return `<button class="wc" data-word="${k}">${esc(w.fr)}</button>${
+        open ? `<div class="inline-card"><b class="fr">${esc(w.fr)}</b>
+          <span class="ipa">${esc(w.ipa)} · ${esc(w.en)}</span>
+          <p>${esc(w.note)}</p><div class="ex fr">${esc(w.ex)}</div></div>` : ""}`;
+    }).join(" · ");
+
+    thread += `
+      <div class="turn them">
+        <div class="who">Le serveur</div>
+        <div class="bubble"><span class="fr">${esc(step.barista)}</span>
+          <span class="en">${esc(step.baristaEn)}</span></div>
+      </div>
+      <div class="cue">${esc(step.task)}</div>
+      ${step.model ? `<div class="turn you"><div class="who">You could say</div>
+        <div class="bubble hint"><span class="fr">${esc(step.model)}</span>
+        <span class="en">${esc(step.modelEn)}</span></div></div>` : ""}
+      <div class="cue" style="text-align:left">Words you might need: ${words}</div>`;
+  }
+
+  const composer = finished() ? `
+    <div class="earned"><b>Capability earned</b>${esc(mission().capability)}
+      <div style="margin-top:8px;font-size:.9rem;opacity:.85">
+        Three pieces of Learning Evidence, from one conversation you saw through.</div>
+      </div>${recapHTML()}`
+    : `
+    <div class="composer">
+      <p class="prompt">Your turn — type it, say it, or both.</p>
+      <textarea id="draft" placeholder="Écrivez votre réponse…">${esc(S.draft)}</textarea>
+      ${S.recording||S.heard?`<div class="heard" id="heard"></div>`:""}
+      <div class="composer-row">
+        <button class="mic ${S.recording||S.audioUrl?"on":""}" id="mic">${micLabel()}</button>
+        <button class="send" id="send" ${canSubmit()?"":"disabled"}>Send</button>
+      </div>
+      ${S.micError?`<p class="prompt" style="color:var(--warn);margin:9px 0 0">${esc(S.micError)}</p>`:""}
+    </div>`;
+
+  const sc = finished() ? null : stepNow().scene;
+  return `<div class="vA">
+    <div class="mission-strip">
+      <h1>${esc(mission().title)}</h1>
+      <span>${esc(sourceLabel())}</span>
+    </div>
+    ${sc ? `<div class="scene">
+      <div class="scene-where">${esc(sc.where)}</div>
+      <p><b>You are</b> ${esc(sc.you)}</p>
+      <p><b>Talking to</b> ${esc(sc.them)}</p>
+      <p><b>You want</b> ${esc(sc.want)}</p>
+      <p class="scene-done"><b>Done when</b> ${esc(sc.done)}</p></div>` : ""}
+    <div class="thread">${thread}</div>
+    ${composer}
+  </div>`;
+}
+
+/* ============================== VARIANT B ================================ */
+/* Everything visible at once. The ramp, the evidence, the capability meter and
+   the whole Word Card set never leave the screen. Desktop, dense, no surprises. */
+function renderB(){
+  const step = finished() ? null : stepNow();
+
+  const ramp = steps().map((s, n) => {
+    const cls = n < S.i ? "done" : (n === S.i ? "now" : "locked");
+    return `<li class="${cls}"><span class="n">${n+1}</span>
+      <span>${esc(s.name)}</span></li>`;
+  }).join("");
+
+  const ev = S.evidence.length ? S.evidence.map(e => `
+    <li><b>${esc(e.name)}</b>${esc(e.said)}</li>`).join("")
+    : `<li>Nothing yet. Each finished challenge is saved here.</li>`;
+
+  const inPlay = new Set(steps().flatMap(st => st.words));
+  const cards = Object.entries(WORDS).filter(([k]) => inPlay.has(k)).map(([k,w]) => `
+    <div class="wcard ${step && step.words.includes(k) ? "new":""}">
+      <b class="fr">${esc(w.fr)}</b><span class="ipa">${esc(w.ipa)}</span>
+      ${originOf(k) ? `<div class="carried">↩ from ${esc(originOf(k))}</div>` : ""}
+      <div class="mean">${esc(w.en)} — ${esc(w.note)}</div>
+      <div class="ex fr">${esc(w.ex)}</div></div>`).join("");
+
+  const work = finished() ? `
+      <span class="stepname" style="color:var(--accent)">Capability check complete</span>
+      <h2>${esc(mission().capability)}</h2>
+      <p style="color:var(--muted)">Backed by three pieces of Learning Evidence in the left rail.
+      This does not claim general proficiency — only this situation, including when it changed.</p>
+      ${recapHTML()}`
+    : `
+      <span class="stepname">Challenge ${S.i+1} of 3 · ${esc(step.name)}</span>
+      <h2>${esc(mission().title)}</h2>
+      <div class="field"><label>The scene</label>
+        <p><b>${esc(step.scene.where)}</b></p>
+        <p style="margin-top:6px;color:var(--muted);font-size:.92rem">
+          <b style="color:var(--ink)">You are</b> ${esc(step.scene.you)}<br>
+          <b style="color:var(--ink)">Talking to</b> ${esc(step.scene.them)}<br>
+          <b style="color:var(--ink)">You want</b> ${esc(step.scene.want)}</p>
+        <p style="margin-top:8px;color:var(--accent);font-size:.92rem">
+          <b>Done when</b> ${esc(step.scene.done)}</p></div>
+      <div class="field"><label>They say</label>
+        <p class="fr">${esc(step.barista)}</p>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:4px">${esc(step.baristaEn)}</p></div>
+      <div class="field"><label>Your task</label><p>${esc(step.task)}</p>
+        ${step.model ? `<details open><summary>Show the model sentence</summary>
+          <div class="model fr">${esc(step.model)}
+          <div style="color:var(--muted);font-size:.88rem;margin-top:5px">${esc(step.modelEn)}</div>
+          </div></details>` : `<p style="color:var(--warn);font-size:.9rem;margin-top:8px">
+          No model sentence — this one is on you.</p>`}</div>
+      <div class="field"><label>Your written attempt</label>
+        <textarea id="draft" placeholder="Écrivez votre réponse…">${esc(S.draft)}</textarea>
+        <div class="speak">
+          <button id="mic" class="${S.recording||S.audioUrl?"on":""}">${micLabel()}</button>
+          <span${S.micError?" style=\"color:var(--warn)\"":""}>${S.micError ? esc(S.micError) : (Speech.supported ? "Say it aloud — we will type what we hear." : "Say it aloud, then replay it. This browser cannot transcribe.")}</span>
+        </div>
+        ${S.recording||S.heard?`<div class="heard" id="heard"></div>`:""}
+        <button class="submit" id="send" ${canSubmit()?"":"disabled"}>Save this attempt</button></div>`;
+
+  return `<div class="vB">
+    <aside class="rail">
+      <h3>Mission</h3>
+      <p class="brief"><strong>Commander un café</strong>
+        ${esc(sourceLabel())}</p>
+      <h3>Difficulty ramp</h3><ul class="ramp">${ramp}</ul>
+      <h3>Capability</h3>
+      <div class="meter"><i style="width:${(S.evidence.length/3)*100}%"></i></div>
+      <p class="cap ${S.capability?"earned":""}">${S.capability
+        ? esc(mission().capability) : `${S.evidence.length} of 3 challenges — not earned yet`}</p>
+      <h3 style="margin-top:22px">Learning evidence</h3><ul class="ev">${ev}</ul>
+    </aside>
+    <main class="work">${work}</main>
+    <aside class="ref"><h3>Word cards</h3>${cards}</aside>
+  </div>`;
+}
+
+/* ============================== VARIANT C ================================ */
+/* One thing on the screen at a time. State is hidden behind a chip on purpose —
+   the bet is that a Busy Learner wants the next thing, not the dashboard. */
+function renderC(){
+  const dots = steps().map((_, n) =>
+    `<i class="${n < S.i ? "on" : (n === S.i ? "at" : "")}"></i>`).join("");
+
+  let card;
+  if (finished()) {
+    card = `<div class="big">
+      <div class="kind">Capability earned</div>
+      <p class="lead">${esc(mission().capability)}</p>
+      <p class="sub">You did it supported, then unsupported, then two days later
+      when the situation changed.</p>
+      <button class="ghost" id="peek">${S.peek?"Hide":"See"} your three pieces of evidence</button>
+      ${S.peek ? `<div class="peek"><b>Learning evidence</b><ul>${
+        S.evidence.map(e=>`<li>${esc(e.name)} — ${esc(e.said)}</li>`).join("")}</ul></div>`:""}
+      ${recapHTML()}
+    </div>`;
+  } else {
+    const step = stepNow();
+    const w = WORDS[step.words[0]];
+    card = `<div class="big">
+      <div class="kind">${esc(step.name)}</div>
+      <div class="scene">
+        <b>${esc(step.scene.where)}</b>
+        <p>You are ${esc(step.scene.you)}</p>
+        <p>Talking to ${esc(step.scene.them)}</p>
+        <p>You want ${esc(step.scene.want)}</p>
+        <p class="done">Done when ${esc(step.scene.done)}</p>
+      </div>
+      <p class="lead fr">${esc(step.barista)}</p>
+      <p class="sub">${esc(step.baristaEn)}</p>
+      ${step.model
+        ? `<div class="phrase fr">${esc(step.model)}<div class="ipa">${esc(w.ipa)} · ${esc(w.en)}</div></div>`
+        : `<div class="phrase" style="background:var(--warn-soft);color:var(--warn);font-size:1.02rem">
+             ${esc(step.task)}</div>`}
+      <textarea id="draft" placeholder="Écrivez…">${esc(S.draft)}</textarea>
+      <button class="mic ${S.recording||S.audioUrl?"on":""}" id="mic">${micLabel()}</button>
+      ${S.recording||S.heard?`<div class="heard" id="heard"></div>`:""}
+      <button class="next" id="send" ${canSubmit()?"":"disabled"}>Next</button>
+      <button class="ghost" id="peek">${S.peek?"Hide progress":"Where am I?"}</button>
+      ${S.peek ? `<div class="peek"><b>Progress</b><ul>
+        <li>Challenge ${S.i+1} of 3</li>
+        <li>Evidence saved: ${S.evidence.length}</li>
+        <li>Capability: ${S.capability ? esc(S.capability) : "not earned yet"}</li></ul></div>`:""}
+    </div>`;
+  }
+
+  return `<div class="vC">
+    <div class="dots">${dots}</div>
+    <div class="chip">${esc(mission().title)} · ${esc(sourceLabel())}</div>
+    <div class="stack">${card}</div>
+  </div>`;
+}
+
+/* =============================== plumbing =============================== */
+const RENDER = { A:renderA, B:renderB, C:renderC };
+const $ = id => document.getElementById(id);
+
+function render(){
+  $("root").innerHTML = S.screen === "start" ? renderStart()
+                      : S.screen === "paste" ? renderPaste()
+                      : RENDER[variant]();
+  $("vlabel").textContent = S.screen === "mission"
+    ? `${variant} — ${VARIANTS[variant]}`
+    : `entry — same for A/B/C`;
+
+  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+    const to = b.dataset.go;
+    if (to === "ours") { S.source = { kind:"ours", label:"a café in Lyon" }; S.screen = "mission"; }
+    else S.screen = to;
+    render();
+  }));
+  const purl = $("purl");
+  if (purl) purl.addEventListener("input", e => { S.pasteUrl = e.target.value; syncGo(); });
+  const ptext = $("ptext");
+  if (ptext) ptext.addEventListener("input", e => {
+    const was = S.paste.trim().length > 40;
+    S.paste = e.target.value;
+    // Only re-render when the "found words" panel appears or disappears,
+    // otherwise the textarea loses focus on every keystroke.
+    if (was !== (S.paste.trim().length > 40)) { render(); $("ptext").focus(); } else syncGo();
+  });
+  const pgo = $("pgo");
+  if (pgo) pgo.addEventListener("click", () => {
+    S.source = { kind:"own",
+      label: S.pasteUrl.trim() ? S.pasteUrl.trim().replace(/^https?:\/\//,"").slice(0,38)
+                               : "your pasted text" };
+    S.screen = "mission"; render();
+  });
+
+  const draft = $("draft");
+  if (draft) draft.addEventListener("input", e => { S.draft = e.target.value; syncSubmit(); });
+  const mic = $("mic");
+  if (mic) mic.addEventListener("click", toggleMic);
+  const send = $("send");
+  if (send) send.addEventListener("click", submit);
+  const again = $("again");
+  if (again) again.addEventListener("click", () => { nextMission(); render(); });
+  const peek = $("peek");
+  if (peek) peek.addEventListener("click", () => { S.peek = !S.peek; render(); });
+  document.querySelectorAll("[data-word]").forEach(b =>
+    b.addEventListener("click", () => {
+      S.openWord = S.openWord === b.dataset.word ? null : b.dataset.word; render();
+    }));
+
+  paintHeard();
+  renderReadout();
+}
+
+/* Keep typing smooth: flip the button without re-rendering the textarea. */
+function syncSubmit(){ const b = $("send"); if (b) b.disabled = !canSubmit(); }
+function syncGo(){ const b = $("pgo"); if (b) b.disabled = !(S.paste.trim().length > 40 || S.pasteUrl.trim()); }
+
+/* Rule 5 — the full state, visible after every action and every variant switch.
+   Kept inside the prototype scaffolding so it can't flatter any design. */
+function renderReadout(){
+  const r = $("readout");
+  if (r.hidden) return;
+  r.textContent = JSON.stringify({
+    screen: S.screen,
+    source: S.source ? S.source.kind + " — " + S.source.label : "not chosen yet",
+    variant: `${variant} — ${VARIANTS[variant]}`,
+    activeChallenge: finished() ? "none — mission complete"
+      : `${S.i+1}/3 ${stepNow().name}`,
+    capability: S.capability || "not earned",
+    learningEvidence: S.evidence.map(e => `day ${e.day} · ${e.name} · "${e.said}"`),
+    draft: S.draft, recordingMade: !!S.audioUrl, heardByBrowser: S.heard || "(nothing yet)", micError: S.micError
+  }, null, 2);
+}
+
+/* ?variant=A, with a #variant=A fallback because file:// blocks replaceState
+   in some browsers. Either way the URL is shareable and reload-stable. */
+function readVariant(){
+  const q = new URLSearchParams(location.search).get("variant");
+  const h = new URLSearchParams(location.hash.slice(1)).get("variant");
+  const v = (q || h || "A").toUpperCase();
+  return VARIANTS[v] ? v : "A";
+}
+function writeVariant(v){
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set("variant", v);
+    history.replaceState(null, "", url);
+  } catch { location.hash = "variant=" + v; }
+}
+function cycle(delta){
+  const keys = Object.keys(VARIANTS);
+  variant = keys[(keys.indexOf(variant) + delta + keys.length) % keys.length];
+  writeVariant(variant);
+  render();
+}
+
+$("prev").addEventListener("click", () => cycle(-1));
+$("next").addEventListener("click", () => cycle(1));
+$("state").addEventListener("click", () => { $("readout").hidden = !$("readout").hidden; renderReadout(); });
+$("reset").addEventListener("click", () => { S = fresh(); render(); });
+document.addEventListener("keydown", e => {
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (e.key === "ArrowLeft") cycle(-1);
+  if (e.key === "ArrowRight") cycle(1);
+});
+
+variant = readVariant();
+render();
+</script>
+</body>
+</html>

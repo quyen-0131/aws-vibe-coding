@@ -1,0 +1,130 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "7.2 Write property test — matcher verdict mapping stays inside the fixed set": [
+      {
+        "executionId": "83454ef5-7d6f-4d09-a8d1-ccf59567e804",
+        "chatSessionId": "sess_76cf782e-df06-4f98-87b5-efecb559a5d6",
+        "timestamp": 1791591014476
+      },
+      {
+        "executionId": "83454ef5-7d6f-4d09-a8d1-ccf59567e804",
+        "chatSessionId": "sess_76cf782e-df06-4f98-87b5-efecb559a5d6",
+        "timestamp": 1791591402540
+      }
+    ],
+    "8.2 Write property test — Learner_Content stays on-device except in restricted matcher payload": [
+      {
+        "executionId": "05938aa9-640f-4326-8847-c894b04a7171",
+        "chatSessionId": "sess_5f00a1f5-f151-4e32-81e7-a676c4adec1f",
+        "timestamp": 1791591533807
+      },
+      {
+        "executionId": "05938aa9-640f-4326-8847-c894b04a7171",
+        "chatSessionId": "sess_5f00a1f5-f151-4e32-81e7-a676c4adec1f",
+        "timestamp": 1791591689017
+      }
+    ],
+    "9.2 Route a BuiltSession through Read, Build, Say-it, and Done screens": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791601833204
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791602479498
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603217557
+      }
+    ],
+    "9.3 Build the Done screen from learner content": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791601833328
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603232609
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603543503
+      }
+    ],
+    "9.4 Enforce the degraded-form fallback when a step would require invented French": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791601833428
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791602480399
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603218496
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791601833528
+      },
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603568788
+      }
+    ],
+    "9.1 Add the importer UI and empty-state handling": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791602459092
+      }
+    ],
+    "9. Wire learner-built sessions into the existing flow and render layer": [
+      {
+        "executionId": "c56ab33e-4e96-4060-ae6c-2a7c28b0d617",
+        "chatSessionId": "sess_3598f4af-b1fe-4dc9-8d9e-c734d0364e11",
+        "timestamp": 1791603543716
+      }
+    ],
+    "9.5 Write property test — Done screen pairs honestly and shows no scores": [
+      {
+        "executionId": "a3fbdb8f-8bdf-4314-b94c-f7046533b901",
+        "chatSessionId": "sess_2876b9e4-5ee3-49ed-ab59-cd8c3dbb6ced",
+        "timestamp": 1791603997150
+      },
+      {
+        "executionId": "a3fbdb8f-8bdf-4314-b94c-f7046533b901",
+        "chatSessionId": "sess_2876b9e4-5ee3-49ed-ab59-cd8c3dbb6ced",
+        "timestamp": 1791604272912
+      }
+    ],
+    "9.6 Write example/integration tests for render parity and privacy": [
+      {
+        "executionId": "aad1702e-b6a2-43d9-a5bf-73c0949c0aa8",
+        "chatSessionId": "sess_3b5b9480-b8f1-4a98-af5a-e237b421a783",
+        "timestamp": 1791604337157
+      },
+      {
+        "executionId": "aad1702e-b6a2-43d9-a5bf-73c0949c0aa8",
+        "chatSessionId": "sess_3b5b9480-b8f1-4a98-af5a-e237b421a783",
+        "timestamp": 1791604605571
+      }
+    ]
+  }
+}

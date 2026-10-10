@@ -1,0 +1,9 @@
+# Never commit secrets
+.env
+.env.local
+.env.*.local
+
+node_modules/
+
+# Local backup copies
+*.bak

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mission flow prototype — Language Study Planner</title>
+  <style>
+    :root { --ink: #18221f; --muted: #5c6963; --paper: #f7f6f1; --card: #fffefa; --line: #d9dfd9; --accent: #236b50; --accent-soft: #e4f1eb; --warn: #8c4a11; --warn-soft: #fff0df; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1050px; margin: 0 auto; padding: 48px 24px 72px; }
+    .eyebrow { color: var(--accent); font-size: .78rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { margin: 7px 0 9px; font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.045em; line-height: 1.03; }
+    h2 { margin: 0 0 12px; font-size: 1.2rem; }
+    .intro { max-width: 760px; color: var(--muted); font-size: 1.06rem; }
+    .notice { margin: 28px 0; padding: 15px 17px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(290px, .9fr); gap: 22px; align-items: start; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: 0 3px 14px rgba(25, 39, 32, .035); }
+    .state-change { min-height: 52px; margin: 0 0 18px; padding: 12px 14px; color: var(--accent); background: var(--accent-soft); border-radius: 9px; font-weight: 650; }
+    dl { display: grid; grid-template-columns: 145px 1fr; margin: 0; border-top: 1px solid var(--line); }
+    dt, dd { margin: 0; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    dt { color: var(--muted); font-size: .88rem; font-weight: 650; }
+    dd { font-weight: 650; }
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: .83rem; }
+    .evidence { margin: 0; padding-left: 19px; }
+    .evidence li { margin: 4px 0; }
+    .actions { display: grid; gap: 10px; }
+    button { appearance: none; width: 100%; border: 1px solid #b9c9bf; border-radius: 9px; padding: 11px 13px; color: var(--ink); background: #fff; text-align: left; font: inherit; font-weight: 650; cursor: pointer; }
+    button:hover { border-color: var(--accent); background: #f3faf6; }
+    button.primary { color: white; border-color: var(--accent); background: var(--accent); }
+    button.primary:hover { background: #18543e; }
+    button.reset { margin-top: 14px; color: var(--muted); font-size: .9rem; }
+    .helper { margin: 14px 0 0; color: var(--muted); font-size: .9rem; }
+    .walkthrough { margin-top: 22px; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 13px; }
+    .tabs button { width: auto; padding: 8px 11px; font-size: .88rem; }
+    .tabs button[aria-selected="true"] { color: white; border-color: var(--accent); background: var(--accent); }
+    .scenario { padding: 18px; border: 1px solid var(--line); border-radius: 11px; background: #fcfcf8; }
+    .scenario p { margin: 0 0 14px; color: var(--muted); }
+    .steps { display: grid; gap: 8px; }
+    .step { display: flex; align-items: center; gap: 10px; }
+    .step button { flex: 1; }
+    .step-number { flex: 0 0 25px; width: 25px; height: 25px; padding-top: 2px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); text-align: center; font-size: .82rem; font-weight: 800; }
+    .step.done button { opacity: .52; text-decoration: line-through; }
+    .step.done .step-number { color: white; background: var(--accent); }
+    .warning { margin-top: 16px; padding: 11px 13px; color: var(--warn); background: var(--warn-soft); border-radius: 9px; font-size: .9rem; }
+    footer { margin-top: 25px; color: var(--muted); font-size: .88rem; }
+    @media (max-width: 760px) { main { padding: 30px 15px 48px; } .grid { grid-template-columns: 1fr; } dl { grid-template-columns: 118px 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Throwaway logic prototype · no data is saved</div>
+    <h1>Can a Mission earn a Capability only after a delayed Review Mission?</h1>
+    <p class="intro">This explores one decision for the Language Study Planner: a Busy Learner finishes two in-the-moment challenges, then returns later for a Review Mission. Does that sequence make the pending state, Learning Evidence, and eventual Capability clear enough to build?</p>
+    <div class="notice"><strong>Assumption under test:</strong> a Capability Check is complete only after all three challenges. The first Mission collects two pieces of Learning Evidence; the delayed Review Mission collects the third and earns the Capability.</div>
+
+    <div class="grid">
+      <section aria-live="polite">
+        <h2>Current study state</h2>
+        <p class="state-change" id="change">A new Study Plan is ready. No practice has begun.</p>
+        <dl id="state"></dl>
+      </section>
+      <section>
+        <h2>Free play</h2>
+        <div class="actions" id="actions"></div>
+        <button class="reset" id="reset">Reset this learner</button>
+        <p class="helper">Every action stays available on purpose. If it is not allowed now, the state panel explains why.</p>
+      </section>
+    </div>
+
+    <section class="walkthrough">
+      <h2>Guided walkthroughs</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="scenario">
+        <p id="scenario-description"></p>
+        <div class="steps" id="steps"></div>
+        <div class="warning" id="scenario-note"></div>
+      </div>
+    </section>
+    <footer>Prototype only — the state machine in this file is portable; the page around it is not production UI.</footer>
+  </main>
+
+  <script>
+    // Portable, pure state machine: it has no knowledge of the page or its buttons.
+    const MissionMachine = (() => {
+      const initialState = () => ({
+        day: 1,
+        mission: 'Café conversation',
+        phase: 'not started',
+        currentChallenge: 'supported attempt',
+        reviewStatus: 'not scheduled',
+        capability: 'not earned',
+        learningEvidence: [],
+        lastChange: 'A new Study Plan is ready. No practice has begun.'
+      });
+
+      const transition = (state, action) => {
+        const next = structuredClone(state);
+        const reject = (reason) => ({ ...state, lastChange: `That cannot happen yet: ${reason}` });
+        const addEvidence = (label) => { next.learningEvidence.push(label); };
+
+        switch (action) {
+          case 'startMission':
+            if (state.phase !== 'not started') return reject('this Mission has already begun.');
+            next.phase = 'in progress';
+            next.currentChallenge = 'supported attempt';
+            next.lastChange = 'Mission started. The supported attempt is ready.';
+            return next;
+          case 'completeSupported':
+            if (state.phase !== 'in progress' || state.currentChallenge !== 'supported attempt') return reject('the supported attempt is not the active challenge.');
+            addEvidence('Supported attempt: ordered a coffee with a prompt');
+            next.currentChallenge = 'variation';
+            next.lastChange = 'Supported attempt saved as Learning Evidence. A variation is now ready.';
+            return next;
+          case 'completeVariation':
+            if (state.phase !== 'in progress' || state.currentChallenge !== 'variation') return reject('the variation is not ready yet.');
+            addEvidence('Variation: ordered a different drink without the prompt');
+            next.phase = 'awaiting review';
+            next.currentChallenge = 'none — return later';
+            next.reviewStatus = `scheduled for day ${state.day + 2}`;
+            next.lastChange = `Variation saved. The Mission pauses until its Review Mission on day ${state.day + 2}; no Capability is earned yet.`;
+            return next;
+          case 'advanceDay':
+            next.day += 1;
+            if (state.phase === 'awaiting review' && next.day >= 3) {
+              next.reviewStatus = 'ready now';
+              next.lastChange = 'The delayed Review Mission is now ready.';
+            } else {
+              next.lastChange = `It is now day ${next.day}.`;
+            }
+            return next;
+          case 'startReview':
+            if (state.phase !== 'awaiting review' || state.reviewStatus !== 'ready now') return reject('the Review Mission is not ready. Advance time until its scheduled day.');
+            next.phase = 'review in progress';
+            next.currentChallenge = 'delayed Review Mission';
+            next.lastChange = 'Review Mission started. The learner must use the pattern after time away.';
+            return next;
+          case 'completeReview':
+            if (state.phase !== 'review in progress') return reject('the delayed Review Mission has not started.');
+            addEvidence('Delayed Review Mission: handled a café change after two days away');
+            next.phase = 'complete';
+            next.currentChallenge = 'all three challenges complete';
+            next.reviewStatus = 'complete';
+            next.capability = 'earned: can handle a simple café order and change';
+            next.lastChange = 'Review saved as Learning Evidence. All three related challenges are complete, so the Capability is earned.';
+            return next;
+          default:
+            return state;
+        }
+      };
+      return { initialState, transition };
+    })();
+
+    const labels = {
+      startMission: 'Start the Mission',
+      completeSupported: 'Finish the supported attempt',
+      completeVariation: 'Finish the variation',
+      advanceDay: 'Move ahead one day',
+      startReview: 'Start the Review Mission',
+      completeReview: 'Finish the Review Mission'
+    };
+    const scenarios = [
+      {
+        name: 'Full path',
+        description: 'Run the intended journey. Watch the Capability stay unearned after the first two challenges, then appear only after the delayed Review Mission.',
+        note: 'Question to judge: is “awaiting review” a useful and understandable state for a Busy Learner?',
+        steps: ['startMission', 'completeSupported', 'completeVariation', 'advanceDay', 'advanceDay', 'startReview', 'completeReview']
+      },
+      {
+        name: 'Busy week',
+        description: 'The learner finishes the first Mission but cannot return at the exact scheduled time. Keep advancing days, then start the Review Mission.',
+        note: 'Question to judge: should a Review remain “ready now” indefinitely, or should the Study Plan treat lateness differently?',
+        steps: ['startMission', 'completeSupported', 'completeVariation', 'advanceDay', 'advanceDay', 'advanceDay', 'advanceDay', 'startReview', 'completeReview']
+      },
+      {
+        name: 'Too early',
+        description: 'Try to start the Review Mission before it is ready, then complete the first Mission properly and wait.',
+        note: 'Question to judge: is a plain explanation enough when a learner tries an action too early?',
+        steps: ['startReview', 'startMission', 'completeSupported', 'completeVariation', 'startReview', 'advanceDay', 'advanceDay', 'startReview']
+      }
+    ];
+
+    let state = MissionMachine.initialState();
+    let activeScenario = 0;
+    let completedSteps = 0;
+    const el = (id) => document.getElementById(id);
+
+    function value(text) { return `<span class="badge">${text}</span>`; }
+    function renderState() {
+      const evidence = state.learningEvidence.length
+        ? `<ul class="evidence">${state.learningEvidence.map(item => `<li>${item}</li>`).join('')}</ul>`
+        : 'None yet';
+      el('change').textContent = state.lastChange;
+      el('state').innerHTML = `
+        <dt>Today</dt><dd>Day ${state.day}</dd>
+        <dt>Mission</dt><dd>${state.mission}</dd>
+        <dt>Mission status</dt><dd>${value(state.phase)}</dd>
+        <dt>Active challenge</dt><dd>${state.currentChallenge}</dd>
+        <dt>Review Mission</dt><dd>${value(state.reviewStatus)}</dd>
+        <dt>Capability</dt><dd>${value(state.capability)}</dd>
+        <dt>Learning Evidence</dt><dd>${evidence}</dd>`;
+    }
+    function dispatch(action, fromScenario = false) {
+      state = MissionMachine.transition(state, action);
+      if (fromScenario) completedSteps += 1;
+      render();
+    }
+    function renderActions() {
+      el('actions').innerHTML = Object.entries(labels).map(([action, label]) =>
+        `<button class="${action === 'startMission' ? 'primary' : ''}" data-action="${action}">${label}</button>`).join('');
+      el('actions').querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => dispatch(button.dataset.action)));
+    }
+    function renderScenario() {
+      el('tabs').innerHTML = scenarios.map((scenario, index) =>
+        `<button data-tab="${index}" aria-selected="${index === activeScenario}">${scenario.name}</button>`).join('');
+      el('tabs').querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
+        activeScenario = Number(button.dataset.tab); completedSteps = 0; state = MissionMachine.initialState(); render();
+      }));
+      const scenario = scenarios[activeScenario];
+      el('scenario-description').textContent = scenario.description;
+      el('scenario-note').textContent = scenario.note;
+      el('steps').innerHTML = scenario.steps.map((action, index) => `
+        <div class="step ${index < completedSteps ? 'done' : ''}">
+          <span class="step-number">${index + 1}</span>
+          <button data-step="${index}" ${index !== completedSteps ? 'disabled' : ''}>${labels[action]}</button>
+        </div>`).join('');
+      el('steps').querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => dispatch(scenario.steps[Number(button.dataset.step)], true)));
+    }
+    function render() { renderState(); renderActions(); renderScenario(); }
+    el('reset').addEventListener('click', () => { state = MissionMachine.initialState(); completedSteps = 0; render(); });
+    render();
+  </script>
+</body>
+</html>
