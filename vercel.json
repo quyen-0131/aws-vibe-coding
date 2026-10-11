@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "rewrites": [{ "source": "/", "destination": "/app.html" }],
+  "functions": {
+    "api/match.js": { "maxDuration": 30 },
+    "api/phrases.js": { "maxDuration": 60 }
+  },
+  "headers": [
+    { "source": "/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}
